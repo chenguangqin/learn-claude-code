@@ -3,7 +3,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CHAPTERS = sorted(ROOT.glob("s[0-9][0-9]_*"))
+# Lessons are sNN_<name>; sNN_<digit> dirs (e.g. s09_1_session) are side variants, not chapters.
+CHAPTERS = sorted(ROOT.glob("s[0-9][0-9]_[a-z]*"))
 
 
 def test_every_chapter_uses_english_as_the_default_readme() -> None:

@@ -21,6 +21,8 @@ and a dispatch map:
 Key insight: the loop stays the same; only tool registration and dispatch grow.
 """
 
+import json
+import logging
 import os
 import subprocess
 from pathlib import Path
@@ -34,18 +36,30 @@ try:
 except ImportError:
     pass
 
-from anthropic import Anthropic
+from anthropic import AnthropicBedrock
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
-if os.getenv("ANTHROPIC_BASE_URL"):
-    os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
-
 WORKDIR = Path.cwd()
-client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
-MODEL = os.environ["MODEL_ID"]
+client = AnthropicBedrock()
+MODEL = os.getenv("MODEL_ID", "global.anthropic.claude-sonnet-4-6")
+TRACE_LOG = Path(os.getenv(
+    "TRACE_LOG",
+    str(WORKDIR / "s02_tool_use" / "trace.log"),
+))
+TRACE_LOG.parent.mkdir(parents=True, exist_ok=True)
 
-SYSTEM = f"You are a coding agent at {WORKDIR}. Use tools to solve tasks. Act, don't explain."
+trace = logging.getLogger("s02.trace")
+trace.setLevel(logging.INFO)
+trace.propagate = False
+if not trace.handlers:
+    handler = logging.FileHandler(TRACE_LOG, encoding="utf-8")
+    handler.setFormatter(logging.Formatter(
+        "%(asctime)s %(levelname)s %(message)s"
+    ))
+    trace.addHandler(handler)
+
+SYSTEM = f"You are a coding agent at {WORKDIR}. Use tools to solve tasks. Act, don't explain. 对于复杂工具，可以编写代码使用bash执行（例如访问网络等等）"
 
 
 # -- From s01 (unchanged) --
@@ -142,16 +156,61 @@ TOOL_HANDLERS = {
 }
 
 
+# -- Streaming response with reasoning and tool-use logs --
+
+def stream_response(messages: list):
+    trace.info("model_request model=%s messages=%d", MODEL, len(messages))
+    with client.messages.stream(
+        model=MODEL, system=SYSTEM, messages=messages,
+        tools=TOOLS, max_tokens=8000,
+        thinking={"type": "adaptive", "display": "summarized"},
+    ) as stream:
+        for event in stream:
+            if event.type == "content_block_start":
+                block = event.content_block
+                if block.type == "text":
+                    print("\033[32m", end="", flush=True)
+
+            elif event.type == "content_block_delta":
+                delta = event.delta
+                if delta.type == "text_delta":
+                    print(delta.text, end="", flush=True)
+
+            elif event.type == "content_block_stop":
+                print("\033[0m", end="", flush=True)
+
+        response = stream.get_final_message()
+
+    usage = response.usage
+    trace.info(
+        "model_response stop_reason=%s input_tokens=%d output_tokens=%d",
+        response.stop_reason, usage.input_tokens, usage.output_tokens,
+    )
+    for block in response.content:
+        if block.type == "thinking":
+            trace.info("thinking\n%s", block.thinking)
+        elif block.type == "text":
+            trace.info("text\n%s", block.text)
+        elif block.type == "tool_use":
+            trace.info(
+                "tool_use name=%s id=%s input=%s",
+                block.name,
+                block.id,
+                json.dumps(block.input, ensure_ascii=False),
+            )
+        else:
+            trace.info("content_block type=%s", block.type)
+
+    return response
+
+
 # -- The agent loop keeps the same shape as s01; only dispatch changes --
 # s01: output = run_bash(block.input["command"])
 # s02: output = TOOL_HANDLERS[block.name](**block.input)
 
 def agent_loop(messages: list):
     while True:
-        response = client.messages.create(
-            model=MODEL, system=SYSTEM, messages=messages,
-            tools=TOOLS, max_tokens=8000,
-        )
+        response = stream_response(messages)
         messages.append({"role": "assistant", "content": response.content})
 
         if response.stop_reason != "tool_use":
@@ -160,10 +219,13 @@ def agent_loop(messages: list):
         results = []
         for block in response.content:
             if block.type == "tool_use":
-                print(f"\033[33m> {block.name}\033[0m")
+                print(f"\n\033[36m> {block.name}\033[0m")
                 handler = TOOL_HANDLERS.get(block.name)
                 output = handler(**block.input) if handler else f"Unknown: {block.name}"
-                print(str(output)[:200])
+                trace.info(
+                    "tool_result name=%s id=%s output=%s",
+                    block.name, block.id, output,
+                )
                 results.append({"type": "tool_result", "tool_use_id": block.id, "content": output})
 
         messages.append({"role": "user", "content": results})
@@ -171,6 +233,7 @@ def agent_loop(messages: list):
 
 if __name__ == "__main__":
     print("s02: Tool Use - four tools added to s01")
+    print(f"Trace log: {TRACE_LOG}")
     print("Enter a question, press Enter to send. Type q to quit.\n")
 
     history = []
@@ -183,7 +246,4 @@ if __name__ == "__main__":
             break
         history.append({"role": "user", "content": query})
         agent_loop(history)
-        for block in history[-1]["content"]:
-            if getattr(block, "type", None) == "text":
-                print(block.text)
         print()

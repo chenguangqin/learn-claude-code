@@ -29,7 +29,7 @@ def load_course_module(module_name: str, module_path: Path, temp_cwd: Path):
 
     fake_dotenv = types.ModuleType("dotenv")
     fake_yaml = types.ModuleType("yaml")
-    setattr(fake_anthropic, "Anthropic", FakeAnthropic)
+    setattr(fake_anthropic, "AnthropicBedrock", FakeAnthropic)
     setattr(fake_dotenv, "load_dotenv", lambda override=True: None)
     setattr(fake_yaml, "safe_load", lambda text: {})
     setattr(fake_yaml, "YAMLError", Exception)

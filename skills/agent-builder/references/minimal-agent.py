@@ -6,19 +6,19 @@ This is the simplest possible working agent (~80 lines).
 It has everything you need: 3 tools + loop.
 
 Usage:
-    1. Set ANTHROPIC_API_KEY environment variable
+    1. Configure AWS credentials for Bedrock (AWS_PROFILE / AWS_REGION)
     2. python minimal-agent.py
     3. Type commands, 'q' to quit
 """
 
-from anthropic import Anthropic
+from anthropic import AnthropicBedrock
 from pathlib import Path
 import subprocess
 import os
 
 # Configuration
-client = Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-MODEL = os.getenv("MODEL_NAME", "claude-sonnet-4-20250514")
+client = AnthropicBedrock()
+MODEL = os.getenv("MODEL_NAME", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
 WORKDIR = Path.cwd()
 
 # System prompt - keep it simple

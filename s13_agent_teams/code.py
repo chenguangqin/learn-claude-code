@@ -3,7 +3,7 @@
 s13: Agent Teams - persistent teammates with shared tasks and mailboxes.
 
 Run:  python s13_agent_teams/code.py
-Need: pip install anthropic python-dotenv + .env with ANTHROPIC_API_KEY
+Need: pip install "anthropic[bedrock]" python-dotenv + AWS credentials and MODEL_ID in .env
 
     +------+  spawn(task_id)  +----------+  result  +------+
     | Lead | ---------------> |   WORK   | -------> | IDLE |
@@ -41,15 +41,16 @@ try:
 except ImportError:
     pass
 
-from anthropic import Anthropic
+from anthropic import AnthropicBedrock
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
-if os.getenv("ANTHROPIC_BASE_URL"):
-    os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
 
-WORKDIR = Path.cwd()
-client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
+# Where the agent reads/writes files and runs commands. Set AGENT_WORKDIR to
+# keep agent output out of this repo; defaults to the current directory.
+WORKDIR = Path(os.getenv("AGENT_WORKDIR") or Path.cwd()).expanduser().resolve()
+WORKDIR.mkdir(parents=True, exist_ok=True)
+client = AnthropicBedrock()
 MODEL = os.environ["MODEL_ID"]
 
 # -- Task System --

@@ -20,7 +20,7 @@ def load_lesson(temp_cwd: Path):
             self.messages = types.SimpleNamespace(create=None)
 
     fake_dotenv = types.ModuleType("dotenv")
-    fake_anthropic.Anthropic = FakeAnthropic
+    fake_anthropic.AnthropicBedrock = FakeAnthropic
     fake_dotenv.load_dotenv = lambda override=True: None
 
     previous_modules = {

@@ -46,7 +46,7 @@ def load_lesson(temp_cwd: Path, lesson_path: Path = LESSON):
             self.messages = types.SimpleNamespace(create=None)
 
     fake_dotenv = types.ModuleType("dotenv")
-    setattr(fake_anthropic, "Anthropic", FakeAnthropic)
+    setattr(fake_anthropic, "AnthropicBedrock", FakeAnthropic)
     setattr(fake_dotenv, "load_dotenv", lambda override=True: None)
     setattr(fake_yaml, "safe_load", lambda value: {})
     setattr(fake_yaml, "YAMLError", ValueError)
@@ -400,7 +400,7 @@ class AgentTeamsRuntimeTests(unittest.TestCase):
                     script = (
                         "import importlib.util, os, sys, time, types\n"
                         "fake_anthropic = types.ModuleType('anthropic')\n"
-                        "fake_anthropic.Anthropic = lambda *a, **k: "
+                        "fake_anthropic.AnthropicBedrock = lambda *a, **k: "
                         "types.SimpleNamespace(messages=types.SimpleNamespace(create=None))\n"
                         "fake_dotenv = types.ModuleType('dotenv')\n"
                         "fake_dotenv.load_dotenv = lambda **k: None\n"

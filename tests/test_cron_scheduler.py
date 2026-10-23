@@ -24,7 +24,7 @@ def load_lesson(workdir: Path):
         def __init__(self, *args, **kwargs):
             self.messages = types.SimpleNamespace(create=None)
 
-    fake_anthropic.Anthropic = FakeAnthropic
+    fake_anthropic.AnthropicBedrock = FakeAnthropic
     fake_dotenv.load_dotenv = lambda override=True: None
 
     previous_modules = {

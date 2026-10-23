@@ -23,12 +23,13 @@ until the model decides to stop. Later chapters add policy,
 hooks, and lifecycle controls around it.
 
 Usage:
-    pip install anthropic python-dotenv
-    ANTHROPIC_API_KEY=... python s01_agent_loop/code.py
+    pip install "anthropic[bedrock]" python-dotenv
+    MODEL_ID=... python s01_agent_loop/code.py   # AWS credentials for Bedrock
 """
 
 import os
 import subprocess
+from pathlib import Path
 
 try:
     import readline
@@ -40,18 +41,21 @@ try:
 except ImportError:
     pass
 
-from anthropic import Anthropic
+from anthropic import AnthropicBedrock
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-if os.getenv("ANTHROPIC_BASE_URL"):
-    os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
 
-client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
+client = AnthropicBedrock()
 MODEL = os.environ["MODEL_ID"]
 
-SYSTEM = f"You are a coding agent at {os.getcwd()}. Use bash to solve tasks. Act, don't explain."
+# Where the agent reads/writes files and runs commands. Set AGENT_WORKDIR to
+# keep agent output out of this repo; defaults to the current directory.
+WORKDIR = Path(os.getenv("AGENT_WORKDIR") or Path.cwd()).expanduser().resolve()
+WORKDIR.mkdir(parents=True, exist_ok=True)
+
+SYSTEM = f"You are a coding agent at {WORKDIR}. Use bash to solve tasks. Act, don't explain."
 
 # -- Tool definition: just bash --
 TOOLS = [{
@@ -71,7 +75,7 @@ def run_bash(command: str) -> str:
     if any(d in command for d in dangerous):
         return "Error: Dangerous command blocked"
     try:
-        r = subprocess.run(command, shell=True, cwd=os.getcwd(),
+        r = subprocess.run(command, shell=True, cwd=WORKDIR,
                            capture_output=True, text=True, timeout=120)
         out = (r.stdout + r.stderr).strip()
         return out[:50000] if out else "(no output)"

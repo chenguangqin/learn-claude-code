@@ -26,18 +26,15 @@ Core insight: One tool (bash) can do everything.
 Subagents via self-recursion: python {name}.py "subtask"
 """
 
-from anthropic import Anthropic
+from anthropic import AnthropicBedrock
 from dotenv import load_dotenv
 import subprocess
 import os
 
 load_dotenv()
 
-client = Anthropic(
-    api_key=os.getenv("ANTHROPIC_API_KEY"),
-    base_url=os.getenv("ANTHROPIC_BASE_URL")
-)
-MODEL = os.getenv("MODEL_NAME", "claude-sonnet-4-20250514")
+client = AnthropicBedrock()
+MODEL = os.getenv("MODEL_NAME", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
 
 SYSTEM = """You are a coding agent. Use bash for everything:
 - Read: cat, grep, find, ls
@@ -85,7 +82,7 @@ Core insight: 4 tools cover 90% of coding tasks.
 The model IS the agent. Code just runs the loop.
 """
 
-from anthropic import Anthropic
+from anthropic import AnthropicBedrock
 from dotenv import load_dotenv
 from pathlib import Path
 import subprocess
@@ -93,11 +90,8 @@ import os
 
 load_dotenv()
 
-client = Anthropic(
-    api_key=os.getenv("ANTHROPIC_API_KEY"),
-    base_url=os.getenv("ANTHROPIC_BASE_URL")
-)
-MODEL = os.getenv("MODEL_NAME", "claude-sonnet-4-20250514")
+client = AnthropicBedrock()
+MODEL = os.getenv("MODEL_NAME", "global.anthropic.claude-haiku-4-5-20251001-v1:0")
 WORKDIR = Path.cwd()
 
 SYSTEM = f"""You are a coding agent at {{WORKDIR}}.
@@ -208,9 +202,8 @@ if __name__ == "__main__":
 }
 
 ENV_TEMPLATE = '''# API Configuration
-ANTHROPIC_API_KEY=sk-xxx
-ANTHROPIC_BASE_URL=https://api.anthropic.com
-MODEL_NAME=claude-sonnet-4-20250514
+# Bedrock: uses AWS credentials (AWS_PROFILE / AWS_REGION)
+MODEL_NAME=global.anthropic.claude-haiku-4-5-20251001-v1:0
 '''
 
 

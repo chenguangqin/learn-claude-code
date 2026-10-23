@@ -22,7 +22,7 @@ def load_module(name: str, path: Path, temp_cwd: Path):
             self.messages = types.SimpleNamespace(create=None)
 
     fake_dotenv = types.ModuleType("dotenv")
-    setattr(fake_anthropic, "Anthropic", FakeAnthropic)
+    setattr(fake_anthropic, "AnthropicBedrock", FakeAnthropic)
     setattr(fake_dotenv, "load_dotenv", lambda override=True: None)
 
     previous_anthropic = sys.modules.get("anthropic")

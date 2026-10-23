@@ -11,7 +11,7 @@ Run:
   python s17_goal_loop/code.py
   python s17_goal_loop/code.py "/goal pytest tests exits with code 0"
 
-The live path uses the Anthropic API for both the worker and the evaluator.
+The live path uses Claude on AWS Bedrock for both the worker and the evaluator.
 Test doubles belong in tests only.
 
     +------------+     +--------------+     +-------------+
@@ -809,7 +809,7 @@ class AgentSession:
 
 def make_live_session(workdir: Path) -> AgentSession:
     try:
-        from anthropic import Anthropic
+        from anthropic import AnthropicBedrock
         from dotenv import load_dotenv
     except ImportError as error:
         raise GoalError(
@@ -817,6 +817,9 @@ def make_live_session(workdir: Path) -> AgentSession:
         ) from error
 
     load_dotenv(override=True)
+    # AGENT_WORKDIR keeps agent output out of this repo.
+    workdir = Path(os.getenv("AGENT_WORKDIR") or workdir).expanduser()
+    workdir.mkdir(parents=True, exist_ok=True)
     model = os.getenv("MODEL_ID")
     if not model:
         raise GoalError("MODEL_ID is required in the environment or .env")
@@ -825,9 +828,7 @@ def make_live_session(workdir: Path) -> AgentSession:
         or os.getenv("ANTHROPIC_DEFAULT_HAIKU_MODEL")
         or model
     )
-    if os.getenv("ANTHROPIC_BASE_URL"):
-        os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
-    client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
+    client = AnthropicBedrock()
     evaluator = PromptGoalEvaluator(client=client, model=evaluator_model)
     block_cap = int(
         os.getenv(

@@ -41,18 +41,21 @@ import subprocess
 import yaml
 from pathlib import Path
 
-from anthropic import Anthropic
+from anthropic import AnthropicBedrock
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-if os.getenv("ANTHROPIC_BASE_URL"):
-    os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
 
-WORKDIR = Path.cwd()
-client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
+# Where the agent reads/writes files and runs commands. Set AGENT_WORKDIR to
+# keep agent output out of this repo; defaults to the current directory.
+WORKDIR = Path(os.getenv("AGENT_WORKDIR") or Path.cwd()).expanduser().resolve()
+WORKDIR.mkdir(parents=True, exist_ok=True)
+client = AnthropicBedrock()
 MODEL = os.environ["MODEL_ID"]
 SKILLS_DIR = WORKDIR / "skills"
+if not SKILLS_DIR.is_dir():  # fall back to the skills shipped with this repo
+    SKILLS_DIR = Path(__file__).resolve().parents[1] / "skills"
 
 
 # -- SkillLoader: scan skills/<name>/SKILL.md with YAML frontmatter --

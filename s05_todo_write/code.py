@@ -34,15 +34,16 @@ try:
 except ImportError:
     pass
 
-from anthropic import Anthropic
+from anthropic import AnthropicBedrock
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
-if os.getenv("ANTHROPIC_BASE_URL"):
-    os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
 
-WORKDIR = Path.cwd()
-client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
+# Where the agent reads/writes files and runs commands. Set AGENT_WORKDIR to
+# keep agent output out of this repo; defaults to the current directory.
+WORKDIR = Path(os.getenv("AGENT_WORKDIR") or Path.cwd()).expanduser().resolve()
+WORKDIR.mkdir(parents=True, exist_ok=True)
+client = AnthropicBedrock()
 MODEL = os.environ["MODEL_ID"]
 
 # s05 change: SYSTEM prompt adds planning guidance

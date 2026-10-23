@@ -25,6 +25,7 @@ import json
 import logging
 import os
 import subprocess
+import time
 from pathlib import Path
 
 try:
@@ -36,16 +37,24 @@ try:
 except ImportError:
     pass
 
-from anthropic import AnthropicBedrock
+from anthropic import AnthropicBedrock, PermissionDeniedError
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
-WORKDIR = Path.cwd()
+# Where the agent reads/writes files and runs commands. Set AGENT_WORKDIR to
+# keep agent output out of this repo; defaults to the current directory.
+WORKDIR = Path(os.getenv("AGENT_WORKDIR") or Path.cwd()).expanduser().resolve()
+WORKDIR.mkdir(parents=True, exist_ok=True)
 client = AnthropicBedrock()
 MODEL = os.getenv("MODEL_ID", "global.anthropic.claude-sonnet-4-6")
+# Haiku 4.5 has no adaptive thinking; it needs an explicit token budget.
+if "haiku" in MODEL:
+    THINKING = {"type": "enabled", "budget_tokens": 4000, "display": "summarized"}
+else:
+    THINKING = {"type": "adaptive", "display": "summarized"}
 TRACE_LOG = Path(os.getenv(
     "TRACE_LOG",
-    str(WORKDIR / "s02_tool_use" / "trace.log"),
+    str(Path(__file__).resolve().parent / "trace.log"),
 ))
 TRACE_LOG.parent.mkdir(parents=True, exist_ok=True)
 
@@ -158,12 +167,25 @@ TOOL_HANDLERS = {
 
 # -- Streaming response with reasoning and tool-use logs --
 
-def stream_response(messages: list):
+def stream_response(messages: list, retries: int = 3):
+    # Bedrock occasionally returns a transient 403 ("unexpected error ... Try
+    # your request again"); the SDK doesn't retry 403s, so do it here.
+    for attempt in range(retries + 1):
+        try:
+            return _stream_once(messages)
+        except PermissionDeniedError as e:
+            if "unexpected error" not in str(e) or attempt == retries:
+                raise
+            trace.info("transient 403, retry %d/%d", attempt + 1, retries)
+            time.sleep(2 ** attempt)
+
+
+def _stream_once(messages: list):
     trace.info("model_request model=%s messages=%d", MODEL, len(messages))
     with client.messages.stream(
         model=MODEL, system=SYSTEM, messages=messages,
         tools=TOOLS, max_tokens=8000,
-        thinking={"type": "adaptive", "display": "summarized"},
+        thinking=THINKING,
     ) as stream:
         for event in stream:
             if event.type == "content_block_start":

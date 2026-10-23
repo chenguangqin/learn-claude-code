@@ -3,7 +3,7 @@
 s15: Integrated Harness - combine the course mechanisms in one runtime.
 
 Run:  python s15_integrated_harness/code.py
-Need: pip install anthropic python-dotenv pyyaml + .env with ANTHROPIC_API_KEY
+Need: pip install "anthropic[bedrock]" python-dotenv pyyaml + AWS credentials and MODEL_ID in .env
 
     scheduled work ----+                    +---- team events
                        v                    v
@@ -44,20 +44,23 @@ try:
 except ImportError:
     READLINE_AVAILABLE = False
 
-from anthropic import Anthropic
+from anthropic import AnthropicBedrock
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
-if os.getenv("ANTHROPIC_BASE_URL"):
-    os.environ.pop("ANTHROPIC_AUTH_TOKEN", None)
 
-WORKDIR = Path.cwd()
-client = Anthropic(base_url=os.getenv("ANTHROPIC_BASE_URL"))
+# Where the agent reads/writes files and runs commands. Set AGENT_WORKDIR to
+# keep agent output out of this repo; defaults to the current directory.
+WORKDIR = Path(os.getenv("AGENT_WORKDIR") or Path.cwd()).expanduser().resolve()
+WORKDIR.mkdir(parents=True, exist_ok=True)
+client = AnthropicBedrock()
 MODEL = os.environ["MODEL_ID"]
 PRIMARY_MODEL = MODEL
 FALLBACK_MODEL = os.getenv("FALLBACK_MODEL_ID")
 
 SKILLS_DIR = WORKDIR / "skills"
+if not SKILLS_DIR.is_dir():  # fall back to the skills shipped with this repo
+    SKILLS_DIR = Path(__file__).resolve().parents[1] / "skills"
 TRANSCRIPT_DIR = WORKDIR / ".transcripts"
 TOOL_RESULTS_DIR = WORKDIR / ".task_outputs" / "tool-results"
 

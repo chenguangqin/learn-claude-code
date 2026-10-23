@@ -1,0 +1,23 @@
+[project]
+name = "learn-claude-code"
+version = "0.1.0"
+description = "Build a Claude Code-style agent harness from scratch, one mechanism per lesson."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic[bedrock]>=0.25.0",
+    "python-dotenv>=1.0.0",
+    "pyyaml>=6.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
+
+[tool.uv]
+# Lessons are standalone scripts, not an installable package.
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

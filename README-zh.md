@@ -267,8 +267,8 @@ def agent_loop(messages):
 ```sh
 git clone https://github.com/shareAI-lab/learn-claude-code
 cd learn-claude-code
-pip install -r requirements.txt
-cp .env.example .env   # 编辑 .env 填入你的 ANTHROPIC_API_KEY
+uv sync                # 创建 .venv 并安装依赖（或：pip install -r requirements.txt）
+cp .env.example .env   # 编辑 .env 填入 MODEL_ID；AWS 凭证来自你的 AWS 配置
 
 python s01_agent_loop/code.py        # 起点 — 一个循环 + bash
 python s08_context_compact/code.py    # 上下文压缩（复杂章）

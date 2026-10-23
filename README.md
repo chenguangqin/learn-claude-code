@@ -346,8 +346,8 @@ Read from s01 through s17 in order. Some mechanisms build directly on the previo
 ```sh
 git clone https://github.com/shareAI-lab/learn-claude-code
 cd learn-claude-code
-pip install -r requirements.txt
-cp .env.example .env   # configure ANTHROPIC_API_KEY
+uv sync                # creates .venv and installs deps (or: pip install -r requirements.txt)
+cp .env.example .env   # set MODEL_ID; AWS credentials come from your AWS profile
 
 python s01_agent_loop/code.py        # Start here -- one loop + bash
 python s08_context_compact/code.py   # Context compaction (complex)
